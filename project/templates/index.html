@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Disaster Detection</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+
+        :root {
+            --bg-color: #0f172a;
+            --surface-color: #1e293b;
+            --primary-color: #3b82f6;
+            --primary-hover: #2563eb;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --border-color: #334155;
+            
+            /* Build Damage Colors */
+            --build-success: #22c55e;
+            --build-warning: #eab308;
+            --build-error: #ef4444;
+            
+            /* Flood Colors */
+            --flood-water: #0ea5e9; /* Light blue */
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            line-height: 1.6;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 1000px;
+            width: 100%;
+            background-color: var(--surface-color);
+            border-radius: 1rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+            padding: 2.5rem;
+            margin-top: 1rem;
+        }
+
+        h1 {
+            text-align: center;
+            font-size: 2.5rem;
+            margin-bottom: 2rem;
+            background: linear-gradient(135deg, #60a5fa, #3b82f6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        
+        .section-title {
+            margin-top: 3rem;
+            margin-bottom: 2rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 2px solid var(--border-color);
+            color: var(--text-main);
+            font-size: 1.75rem;
+            text-align: center;
+        }
+
+        .upload-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-bottom: 2rem;
+        }
+
+        @media (max-width: 768px) {
+            .upload-section {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .file-upload-box {
+            border: 2px dashed var(--border-color);
+            border-radius: 0.75rem;
+            padding: 2rem 1rem;
+            text-align: center;
+            transition: all 0.3s ease;
+            position: relative;
+            background-color: rgba(15, 23, 42, 0.5);
+            cursor: pointer;
+        }
+
+        .file-upload-box:hover {
+            border-color: var(--primary-color);
+            background-color: rgba(59, 130, 246, 0.05);
+        }
+
+        .file-upload-box input[type="file"] {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        .file-upload-box h3 {
+            margin-bottom: 0.5rem;
+            font-weight: 600;
+        }
+
+        .file-upload-box p {
+            color: var(--text-muted);
+            font-size: 0.875rem;
+        }
+
+        .preview-img {
+            max-width: 100%;
+            max-height: 200px;
+            margin-top: 1rem;
+            border-radius: 0.5rem;
+            display: none;
+            object-fit: contain;
+            margin-left: auto;
+            margin-right: auto;
+        }
+
+        .analyze-btn {
+            display: block;
+            width: 100%;
+            padding: 1rem;
+            background-color: var(--primary-color);
+            color: white;
+            border: none;
+            border-radius: 0.5rem;
+            font-size: 1.125rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+            margin-bottom: 2rem;
+        }
+
+        .analyze-btn:hover {
+            background-color: var(--primary-hover);
+        }
+
+        .analyze-btn:disabled {
+            background-color: var(--border-color);
+            cursor: not-allowed;
+            opacity: 0.7;
+        }
+
+        #loading {
+            display: none;
+            text-align: center;
+            margin-bottom: 2rem;
+            font-weight: 500;
+            color: var(--primary-color);
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 1.5rem;
+            height: 1.5rem;
+            border: 3px solid rgba(59, 130, 246, 0.3);
+            border-radius: 50%;
+            border-top-color: var(--primary-color);
+            animation: spin 1s ease-in-out infinite;
+            margin-right: 0.5rem;
+            vertical-align: middle;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .results-section {
+            display: none;
+            margin-top: 2rem;
+            border-top: 1px solid var(--border-color);
+            padding-top: 2rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .images-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .results-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+        
+        @media (max-width: 600px) {
+            .results-grid, .images-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .result-card {
+            background-color: var(--bg-color);
+            border-radius: 0.5rem;
+            overflow: hidden;
+            border: 1px solid var(--border-color);
+        }
+
+        .result-card img {
+            width: 100%;
+            height: auto;
+            display: block;
+            aspect-ratio: 1/1;
+            object-fit: cover;
+        }
+
+        .result-card h4 {
+            padding: 0.75rem;
+            text-align: center;
+            background-color: var(--surface-color);
+            border-top: 1px solid var(--border-color);
+            font-weight: 500;
+        }
+
+        .summary-card {
+            background-color: rgba(59, 130, 246, 0.05);
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            text-align: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .summary-card h2 {
+            font-size: 2.5rem;
+            color: var(--primary-color);
+            margin-bottom: 0.25rem;
+        }
+
+        .legend {
+            display: flex;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 1.5rem;
+            margin-top: 1rem;
+        }
+
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .color-box {
+            width: 1rem;
+            height: 1rem;
+            border-radius: 0.25rem;
+        }
+        
+        .huge-card {
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        
+        .huge-card img {
+            aspect-ratio: auto;
+        }
+
+        :root {
+            --danger-orange: #f97316;
+            --danger-red: #ef4444;
+            --safe-green: #22c55e;
+            --amber: #f59e0b;
+            --critical-red: #dc2626;
+        }
+
+        .dashboard-section {
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease-out;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .dashboard-grid.triple {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid,
+            .dashboard-grid.triple {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.95));
+            border: 1px solid var(--border-color);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--card-accent, var(--primary-color));
+        }
+
+        .metric-card .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .metric-card .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1.2;
+        }
+
+        .metric-card .metric-sub {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.35rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.low {
+            background: rgba(34, 197, 94, 0.15);
+            color: #4ade80;
+            border: 1px solid rgba(34, 197, 94, 0.3);
+        }
+
+        .severity-badge.moderate {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .severity-badge.high {
+            background: rgba(249, 115, 22, 0.15);
+            color: #fb923c;
+            border: 1px solid rgba(249, 115, 22, 0.3);
+        }
+
+        .severity-badge.severe {
+            background: rgba(239, 68, 68, 0.15);
+            color: #f87171;
+            border: 1px solid rgba(239, 68, 68, 0.3);
+        }
+
+        .severity-badge.extreme {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(220, 38, 38, 0.4);
+        }
+
+        .severity-badge.medium {
+            background: rgba(245, 158, 11, 0.15);
+            color: #fbbf24;
+            border: 1px solid rgba(245, 158, 11, 0.3);
+        }
+
+        .severity-badge.critical {
+            background: rgba(220, 38, 38, 0.2);
+            color: #fca5a5;
+            border: 1px solid rgba(220, 38, 38, 0.4);
+            animation: pulse-critical 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-critical {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.3); }
+            50% { box-shadow: 0 0 15px 3px rgba(220, 38, 38, 0.2); }
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(51, 65, 85, 0.6);
+            border-radius: 4px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-out;
+            width: 0;
+        }
+
+        .progress-fill.danger {
+            background: linear-gradient(90deg, var(--danger-orange), var(--danger-red));
+        }
+
+        .progress-fill.safe {
+            background: linear-gradient(90deg, #059669, var(--safe-green));
+        }
+
+        .progress-fill.info {
+            background: linear-gradient(90deg, #0284c7, #38bdf8);
+        }
+
+        .progress-fill.warning {
+            background: linear-gradient(90deg, #d97706, #fbbf24);
+        }
+
+        .action-banner {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(249, 115, 22, 0.08));
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 0.75rem;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            margin-top: 1.25rem;
+        }
+
+        .action-banner .action-icon {
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .action-banner .action-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-muted);
+            margin-bottom: 0.35rem;
+        }
+
+        .action-banner .action-text {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #fca5a5;
+        }
+
+        .dashboard-divider {
+            border: none;
+            border-top: 1px solid var(--border-color);
+            margin: 2rem 0;
+        }
+
+        .card-accent-safe { --card-accent: var(--safe-green); }
+        .card-accent-danger { --card-accent: var(--danger-red); }
+        .card-accent-orange { --card-accent: var(--danger-orange); }
+        .card-accent-blue { --card-accent: var(--flood-water); }
+        .card-accent-amber { --card-accent: var(--amber); }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <h1>Satellite Disaster AI Engine</h1>
+    
+    <form id="uploadForm">
+        <div class="upload-section">
+            <div class="file-upload-box">
+                <h3>Pre-Disaster Image</h3>
+                <p>Click or drag to upload</p>
+                <input type="file" id="pre_image" name="pre_image" accept="image/*" required onchange="previewImage(this, 'pre-preview')">
+                <img id="pre-preview" class="preview-img" alt="Pre-Disaster Preview">
+            </div>
+            
+            <div class="file-upload-box">
+                <h3>Post-Disaster Image</h3>
+                <p>Click or drag to upload</p>
+                <input type="file" id="post_image" name="post_image" accept="image/*" required onchange="previewImage(this, 'post-preview')">
+                <img id="post-preview" class="preview-img" alt="Post-Disaster Preview">
+            </div>
+        </div>
+        
+        <button type="submit" class="analyze-btn" id="analyzeBtn">Analyze Damages</button>
+    </form>
+
+    <div id="loading">
+        <span class="spinner"></span> Running Deep Learning Pipelines...
+    </div>
+
+    <!-- Master Results Wrapper -->
+    <div class="results-section" id="resultsSection">
+        
+        <!-- Originals -->
+        <h3 class="section-title" style="margin-top: 0">Input Images</h3>
+        <div class="images-grid">
+            <div class="result-card">
+                <img id="res-pre" src="" alt="Pre Image">
+                <h4>Pre-Disaster Image</h4>
+            </div>
+            <div class="result-card">
+                <img id="res-post" src="" alt="Post Image">
+                <h4>Post-Disaster Image</h4>
+            </div>
+        </div>
+
+        <!-- Building Damage Section -->
+        <h3 class="section-title">🏗️ Building Damage Analysis</h3>
+        
+        <div class="summary-card">
+            <h2 id="bDamagePercentText">0%</h2>
+            <p>Estimated Structural Damage</p>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background-color: var(--build-success);"></div>
+                    <span>No Change (Green)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background-color: var(--build-warning);"></div>
+                    <span>Partial / New (Yellow)</span>
+                </div>
+                <div class="legend-item">
+                    <div class="color-box" style="background-color: var(--build-error);"></div>
+                    <span>Heavy Damage (Red)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="results-grid">
+            <div class="result-card">
+                <img id="res-b-mask-pre" src="" alt="Building Mask Pre">
+                <h4>Building Mask (Pre)</h4>
+            </div>
+            <div class="result-card">
+                <img id="res-b-mask-post" src="" alt="Building Mask Post">
+                <h4>Building Mask (Post)</h4>
+            </div>
+        </div>
+        
+        <div class="result-card huge-card">
+            <img id="res-b-damage" src="" alt="Building Damage Map">
+            <h4>Building Damage Map</h4>
+        </div>
+
+        <!-- Modified Flood Damage Section (Single Post Image Logic) -->
+        <h3 class="section-title">🌊 Flood Damage Analysis</h3>
+        
+        <div class="summary-card">
+            <h2 id="fDamagePercentText" style="color: var(--flood-water)">0%</h2>
+            <p>Estimated Flooded Water Area</p>
+            
+            <div class="legend">
+                <div class="legend-item">
+                    <div class="color-box" style="background-color: var(--flood-water);"></div>
+                    <span>Detected Water (Blue)</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="images-grid">
+            <div class="result-card">
+                <img id="res-f-post-source" src="" alt="Post Disaster Source Image">
+                <h4>Source Image (Post)</h4>
+            </div>
+            <div class="result-card">
+                <img id="res-f-mask" src="" alt="Flood Damage Mask">
+                <h4>Flood Water Extraction Map</h4>
+            </div>
+        </div>
+
+        <div class="dashboard-section" id="floodDashboard" style="display:none">
+
+            <hr class="dashboard-divider">
+            <h3 class="section-title">📊 Flood Intelligence Dashboard</h3>
+
+            <h4 style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;">Flood Overview</h4>
+            <div class="dashboard-grid triple">
+                <div class="metric-card card-accent-danger">
+                    <div class="metric-icon">🌊</div>
+                    <div class="metric-label">Flood Coverage</div>
+                    <div class="metric-value" id="di-flood-coverage">—</div>
+                    <div class="progress-track"><div class="progress-fill danger" id="di-flood-bar"></div></div>
+                </div>
+                <div class="metric-card card-accent-safe">
+                    <div class="metric-icon">🛡️</div>
+                    <div class="metric-label">Safe Zone</div>
+                    <div class="metric-value" id="di-safe-zone" style="color:var(--safe-green)">—</div>
+                    <div class="progress-track"><div class="progress-fill safe" id="di-safe-bar"></div></div>
+                </div>
+                <div class="metric-card card-accent-orange">
+                    <div class="metric-icon">⚠️</div>
+                    <div class="metric-label">Severity Level</div>
+                    <div class="metric-value" id="di-severity-value" style="font-size:1.1rem;margin-top:0.5rem;">—</div>
+                </div>
+            </div>
+
+            <h4 style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Flood Shape Analysis</h4>
+            <div class="dashboard-grid triple">
+                <div class="metric-card card-accent-blue">
+                    <div class="metric-icon">📡</div>
+                    <div class="metric-label">Water Spread Density</div>
+                    <div class="metric-value" id="di-spread" style="font-size:1.1rem;margin-top:0.3rem;">—</div>
+                </div>
+                <div class="metric-card card-accent-blue">
+                    <div class="metric-icon">🔍</div>
+                    <div class="metric-label">Largest Flood Cluster</div>
+                    <div class="metric-value" id="di-cluster-pixels">—</div>
+                    <div class="metric-sub" id="di-cluster-ratio">—</div>
+                </div>
+                <div class="metric-card card-accent-amber">
+                    <div class="metric-icon">🧩</div>
+                    <div class="metric-label">Fragmentation Index</div>
+                    <div class="metric-value" id="di-frag-score">—</div>
+                    <div class="progress-track"><div class="progress-fill warning" id="di-frag-bar"></div></div>
+                </div>
+            </div>
+
+            <h4 style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Risk Interpretation</h4>
+            <div class="dashboard-grid triple">
+                <div class="metric-card card-accent-orange">
+                    <div class="metric-icon">🚑</div>
+                    <div class="metric-label">Evacuation Difficulty</div>
+                    <div class="metric-value" id="di-evac-score">—</div>
+                    <div class="metric-sub" id="di-evac-label"></div>
+                    <div class="progress-track"><div class="progress-fill danger" id="di-evac-bar"></div></div>
+                </div>
+                <div class="metric-card card-accent-danger">
+                    <div class="metric-icon">🚨</div>
+                    <div class="metric-label">Disaster Urgency Score</div>
+                    <div class="metric-value" id="di-urgency-score">—</div>
+                    <div class="progress-track"><div class="progress-fill danger" id="di-urgency-bar"></div></div>
+                </div>
+                <div class="metric-card card-accent-danger">
+                    <div class="metric-icon">🔴</div>
+                    <div class="metric-label">Urgency Level</div>
+                    <div class="metric-value" id="di-urgency-level" style="font-size:1.1rem;margin-top:0.5rem;">—</div>
+                </div>
+            </div>
+
+            <h4 style="color:var(--text-muted);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Emergency Recommendation</h4>
+            <div class="action-banner" id="di-action-banner">
+                <div class="action-icon">🆘</div>
+                <div class="action-label">Recommended Action</div>
+                <div class="action-text" id="di-action-text">—</div>
+            </div>
+
+        </div>
+
+    </div>
+</div>
+
+<script>
+    function previewImage(input, previewId) {
+        const preview = document.getElementById(previewId);
+        if (input.files && input.files[0]) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                preview.src = e.target.result;
+                preview.style.display = 'block';
+            }
+            reader.readAsDataURL(input.files[0]);
+        } else {
+            preview.src = '';
+            preview.style.display = 'none';
+        }
+    }
+
+    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
+        e.preventDefault();
+        
+        const form = e.target;
+        const formData = new FormData(form);
+        const submitBtn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const resultsSection = document.getElementById('resultsSection');
+        
+        submitBtn.disabled = true;
+        loading.style.display = 'block';
+        resultsSection.style.display = 'none';
+        
+        try {
+            const response = await fetch('/predict', {
+                method: 'POST',
+                body: formData
+            });
+            
+            const data = await response.json();
+            
+            if (response.ok) {
+                // Inputs
+                document.getElementById('res-pre').src = data.pre_image_url;
+                document.getElementById('res-post').src = data.post_image_url;
+                
+                // Building
+                document.getElementById('res-b-mask-pre').src = data.b_mask_pre_url;
+                document.getElementById('res-b-mask-post').src = data.b_mask_post_url;
+                document.getElementById('res-b-damage').src = data.b_damage_map_url;
+                document.getElementById('bDamagePercentText').innerText = `${data.building_damage_percent}%`;
+                
+                // Flood (Using Post-Image only)
+                document.getElementById('res-f-post-source').src = data.post_image_url;
+                document.getElementById('res-f-mask').src = data.flood_mask_url;
+                document.getElementById('fDamagePercentText').innerText = `${data.flood_percent}%`;
+
+                if (data.severity_level) {
+                    var dashboard = document.getElementById('floodDashboard');
+                    dashboard.style.display = 'block';
+
+                    document.getElementById('di-flood-coverage').innerText = data.flood_coverage + '%';
+                    document.getElementById('di-safe-zone').innerText = data.safe_zone + '%';
+
+                    var severityEl = document.getElementById('di-severity-value');
+                    var sevClass = data.severity_level.toLowerCase();
+                    severityEl.innerHTML = '<span class="severity-badge ' + sevClass + '">' + data.severity_level + ' Flood Zone</span>';
+
+                    document.getElementById('di-spread').innerHTML = '<span class="severity-badge info" style="background:rgba(14,165,233,0.12);color:#38bdf8;border:1px solid rgba(14,165,233,0.3);">' + data.water_spread_density + '</span>';
+
+                    var clusterPixels = data.largest_cluster_pixels;
+                    var formatted = clusterPixels >= 1000 ? (clusterPixels / 1000).toFixed(1) + 'K' : clusterPixels;
+                    document.getElementById('di-cluster-pixels').innerText = formatted + ' px';
+                    document.getElementById('di-cluster-ratio').innerText = (data.largest_cluster_ratio * 100).toFixed(0) + '% of total flood area';
+
+                    document.getElementById('di-frag-score').innerText = data.fragmentation_index.toFixed(2);
+
+                    document.getElementById('di-evac-score').innerText = data.evacuation_difficulty_score + ' / 10';
+                    var evacLabel = '';
+                    if (data.evacuation_difficulty_score <= 3) evacLabel = 'Easy';
+                    else if (data.evacuation_difficulty_score <= 6) evacLabel = 'Moderate';
+                    else if (data.evacuation_difficulty_score <= 8) evacLabel = 'Difficult';
+                    else evacLabel = 'Severe';
+                    document.getElementById('di-evac-label').innerText = evacLabel;
+
+                    document.getElementById('di-urgency-score').innerText = data.disaster_urgency_score + ' / 10';
+
+                    var urgencyEl = document.getElementById('di-urgency-level');
+                    var urgClass = data.urgency_level.toLowerCase();
+                    urgencyEl.innerHTML = '<span class="severity-badge ' + urgClass + '">' + data.urgency_level + '</span>';
+
+                    document.getElementById('di-action-text').innerText = data.recommended_action;
+
+                    var actionBanner = document.getElementById('di-action-banner');
+                    if (urgClass === 'critical') {
+                        actionBanner.style.borderColor = 'rgba(220,38,38,0.5)';
+                        actionBanner.style.background = 'linear-gradient(135deg, rgba(220,38,38,0.15), rgba(249,115,22,0.1))';
+                        document.getElementById('di-action-text').style.color = '#fca5a5';
+                    } else if (urgClass === 'high') {
+                        actionBanner.style.borderColor = 'rgba(249,115,22,0.4)';
+                        actionBanner.style.background = 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(245,158,11,0.08))';
+                        document.getElementById('di-action-text').style.color = '#fb923c';
+                    } else if (urgClass === 'medium') {
+                        actionBanner.style.borderColor = 'rgba(245,158,11,0.3)';
+                        actionBanner.style.background = 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(234,179,8,0.06))';
+                        document.getElementById('di-action-text').style.color = '#fbbf24';
+                    } else {
+                        actionBanner.style.borderColor = 'rgba(34,197,94,0.3)';
+                        actionBanner.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(5,150,105,0.06))';
+                        document.getElementById('di-action-text').style.color = '#4ade80';
+                    }
+
+                    setTimeout(function() {
+                        document.getElementById('di-flood-bar').style.width = data.flood_coverage + '%';
+                        document.getElementById('di-safe-bar').style.width = data.safe_zone + '%';
+                        document.getElementById('di-frag-bar').style.width = (data.fragmentation_index * 100) + '%';
+                        document.getElementById('di-evac-bar').style.width = (data.evacuation_difficulty_score * 10) + '%';
+                        document.getElementById('di-urgency-bar').style.width = (data.disaster_urgency_score * 10) + '%';
+                    }, 100);
+                }
+
+                resultsSection.style.display = 'block';
+
+                setTimeout(() => {
+                    document.getElementById('res-pre').scrollIntoView({ behavior: 'smooth' });
+                }, 100);
+            } else {
+                alert(data.error || 'An error occurred during analysis.');
+            }
+        } catch (error) {
+            console.error('Error:', error);
+            alert('Failed to connect to the server.');
+        } finally {
+            submitBtn.disabled = false;
+            loading.style.display = 'none';
+        }
+    });
+</script>
+
+</body>
+</html>

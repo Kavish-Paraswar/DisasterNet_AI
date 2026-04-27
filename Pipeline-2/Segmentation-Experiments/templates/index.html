@@ -1,0 +1,368 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1"/>
+  <title>RescueNet — Damage Assessment</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;900&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:        #0d1117;
+      --surface:   #161b22;
+      --surface2:  #1c2330;
+      --border:    #30363d;
+      --text:      #e6edf3;
+      --muted:     #8b949e;
+      --accent:    #58a6ff;
+      --red:       #e74c3c;
+      --orange:    #e67e22;
+      --yellow:    #f1c40f;
+      --green:     #2ecc71;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Header ── */
+    header {
+      text-align: center;
+      margin-bottom: 2rem;
+    }
+    header h1 {
+      font-size: 2.2rem;
+      font-weight: 900;
+      background: linear-gradient(135deg, #58a6ff, #79c0ff, #a371f7);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      letter-spacing: -0.5px;
+    }
+    header p {
+      color: var(--muted);
+      margin-top: 0.5rem;
+      font-size: 0.95rem;
+    }
+    .accuracy-badge {
+      display: inline-block;
+      background: rgba(88,166,255,0.15);
+      border: 1px solid rgba(88,166,255,0.4);
+      color: #79c0ff;
+      font-size: 0.78rem;
+      font-weight: 600;
+      padding: 0.2rem 0.7rem;
+      border-radius: 20px;
+      margin-top: 0.6rem;
+    }
+
+    /* ── Upload card ── */
+    .upload-card {
+      max-width: 560px;
+      margin: 0 auto 2rem;
+      background: var(--surface);
+      border: 1px dashed var(--border);
+      border-radius: 14px;
+      padding: 2rem;
+      text-align: center;
+      transition: border-color .2s;
+    }
+    .upload-card:hover { border-color: var(--accent); }
+    .upload-card label {
+      display: inline-block;
+      background: var(--surface2);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 0.6rem 1.2rem;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 0.9rem;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    .upload-card label:hover { background: #21262d; }
+    #file-input { display: none; }
+    #file-name { font-size: 0.82rem; color: var(--muted); margin-top: 0.6rem; }
+
+    .btn-analyze {
+      margin-top: 1.2rem;
+      padding: 0.7rem 2rem;
+      background: linear-gradient(135deg, #1f6feb, #388bfd);
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      font-weight: 700;
+      font-size: 1rem;
+      cursor: pointer;
+      transition: transform .15s, box-shadow .15s;
+      box-shadow: 0 4px 15px rgba(31,111,235,0.4);
+    }
+    .btn-analyze:hover { transform: translateY(-2px); box-shadow: 0 6px 20px rgba(31,111,235,0.55); }
+
+    /* ── Two-column image comparison ── */
+    .images-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+      max-width: 960px;
+      margin: 0 auto 1.5rem;
+    }
+    @media (max-width: 640px) { .images-grid { grid-template-columns: 1fr; } }
+
+    .img-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .img-card-header {
+      padding: 0.7rem 1rem;
+      font-weight: 700;
+      font-size: 0.85rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--muted);
+      border-bottom: 1px solid var(--border);
+    }
+    .img-card img {
+      width: 100%;
+      height: 280px;
+      object-fit: cover;
+      display: block;
+    }
+
+    /* ── Stats panel ── */
+    .stats-panel {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1.2rem;
+    }
+    @media (max-width: 700px) { .stats-panel { grid-template-columns: 1fr; } }
+
+    .panel-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.4rem;
+    }
+    .panel-card h3 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 1rem;
+    }
+
+    /* Severity bars */
+    .sev-row { margin-bottom: 0.85rem; }
+    .sev-label-row {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.86rem;
+      margin-bottom: 0.3rem;
+    }
+    .sev-label { font-weight: 600; }
+    .sev-note  { color: var(--muted); font-size: 0.78rem; }
+    .sev-pct   { font-weight: 700; }
+    .bar-track {
+      background: #21262d;
+      border-radius: 6px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .bar-fill {
+      height: 100%;
+      border-radius: 6px;
+      transition: width 0.6s ease;
+    }
+
+    /* Danger badge */
+    .danger-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.5rem;
+      font-size: 1.5rem;
+      font-weight: 900;
+      padding: 0.4rem 1rem;
+      border-radius: 10px;
+      margin-bottom: 1rem;
+      border: 2px solid;
+    }
+
+    /* Survival gauge */
+    .survival-display {
+      text-align: center;
+      margin-bottom: 1rem;
+    }
+    .survival-pct {
+      font-size: 3.5rem;
+      font-weight: 900;
+      line-height: 1;
+    }
+    .survival-label {
+      font-size: 0.82rem;
+      color: var(--muted);
+      margin-top: 0.3rem;
+    }
+
+    /* Evac message */
+    .evac-box {
+      background: var(--surface2);
+      border-radius: 8px;
+      padding: 0.9rem 1rem;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      color: var(--text);
+    }
+
+    /* Legend */
+    .legend {
+      max-width: 960px;
+      margin: 0 auto 2rem;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1rem 1.4rem;
+    }
+    .legend h3 {
+      font-size: 0.78rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: var(--muted);
+      margin-bottom: 0.8rem;
+    }
+    .legend-grid {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.7rem;
+    }
+    .legend-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.82rem;
+    }
+    .legend-dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 3px;
+      flex-shrink: 0;
+    }
+
+    footer {
+      text-align: center;
+      color: var(--muted);
+      font-size: 0.78rem;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <h1>🛸 RescueNet Damage Assessment</h1>
+  <p>AI-powered post-disaster UAV imagery analysis using Transfer Learning</p>
+  <!-- <span class="accuracy-badge">Model Accuracy: 92.8% · ResNet50 + ImageNet</span> -->
+</header>
+
+<!-- Upload Form -->
+<div class="upload-card">
+  <form method="post" enctype="multipart/form-data" id="upload-form">
+    <label for="file-input">📂 Choose UAV Image</label>
+    <input type="file" id="file-input" name="file" accept="image/*" required
+           onchange="document.getElementById('file-name').textContent = this.files[0]?.name || ''">
+    <div id="file-name">No file selected</div>
+    <br/>
+    <button type="submit" class="btn-analyze">🔍 Analyze Image</button>
+  </form>
+</div>
+
+{% if uploaded_image %}
+
+<!-- Images comparison -->
+<div class="images-grid">
+  <div class="img-card">
+    <div class="img-card-header">📷 Original Image</div>
+    <img src="{{ url_for('static', filename='uploads/' + uploaded_image) }}" alt="Original">
+  </div>
+  <div class="img-card">
+    <div class="img-card-header">🗺 Damage Segmentation Map</div>
+    <img src="{{ url_for('static', filename='uploads/' + result_image) }}" alt="Segmented">
+  </div>
+</div>
+
+<!-- Stats Panel -->
+<div class="stats-panel">
+
+  <!-- Left: Severity Breakdown -->
+  <div class="panel-card">
+    <h3>📊 Building Damage Severity Breakdown</h3>
+    {% for c in stats.classifications %}
+    <div class="sev-row">
+      <div class="sev-label-row">
+        <span class="sev-label" style="color:{{ c.bar_color }}">{{ c.label }}</span>
+        <span class="sev-note">{{ c.note }}</span>
+        <span class="sev-pct">{{ c.pct }}%</span>
+      </div>
+      <div class="bar-track">
+        <div class="bar-fill" style="width:{{ c.pct }}%; background:{{ c.bar_color }};"></div>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+
+  <!-- Right: Danger Level + Survival + Evac -->
+  <div class="panel-card">
+    <h3> Danger Level & Evacuation</h3>
+
+    <div>
+      <div class="danger-badge"
+           style="color:{{ stats.danger_color }}; border-color:{{ stats.danger_color }}; background:{{ stats.danger_color }}1a;">
+        {{ stats.danger_icon }} {{ stats.danger_level }}
+      </div>
+    </div>
+
+    <div class="survival-display" style="margin-bottom:1rem;">
+      <div class="survival-pct"
+           style="color: {% if stats.survival >= 70 %}var(--green){% elif stats.survival >= 40 %}var(--yellow){% else %}var(--red){% endif %};">
+        {{ stats.survival }}%
+      </div>
+      <div class="survival-label">Estimated Survival Chance</div>
+    </div>
+
+    <div class="evac-box">
+      {{ stats.evac_msg }}
+    </div>
+  </div>
+
+</div>
+
+<!-- Color Legend -->
+<div class="legend">
+  <h3>🎨 Segmentation Class Legend</h3>
+  <div class="legend-grid">
+    <div class="legend-item"><div class="legend-dot" style="background:#000000;border:1px solid #444;"></div>Background</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#0000ff;"></div>Water</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#646464;"></div>Building – No Damage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ffff00;"></div>Building – Minor Damage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ffa500;"></div>Building – Major Damage</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff0000;"></div>Building – Destroyed</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00ff00;"></div>Road – Clear</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#8b4513;"></div>Road – Blocked</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#ff00ff;"></div>Vehicle</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#006400;"></div>Tree</div>
+    <div class="legend-item"><div class="legend-dot" style="background:#00ffff;"></div>Pool</div>
+  </div>
+</div>
+
+{% endif %}
+
+<footer>RescueNet · Transfer Learning (ResNet50 + ImageNet) · For research purposes only</footer>
+</body>
+</html>
