@@ -2,8 +2,7 @@
 
 > **A production-grade, end-to-end disaster response system engineered to translate real-time UAV and satellite imagery into actionable emergency intelligence.**
 
-![Disaster Intelligence Dashboard](./project/static/dashboard_preview.png)
-*(Please replace the path above with your actual UI dashboard screenshot)*
+<img width="1311" height="806" alt="image" src="https://github.com/user-attachments/assets/a05fe7c9-cf8f-47cf-a6fe-830ddff0a70e" />
 
 ---
 
@@ -205,14 +204,3 @@ To elevate this platform to a government-grade response tool, the following enha
 - **GIS Integration**: Exporting generated binary masks to GeoJSON / shapefiles for direct overlay onto ESRI ArcGIS systems.
 - **Relief Resource Optimization**: Expanding the emergency recommendation algorithm to predict exact logistics requirements (e.g., number of boats, rations needed) based on cluster sizes and evacuation difficulty.
 - **Temporal Damage Tracking**: Storing session UUIDs and tracking the expansion or receding of flood waters over a multi-day timeline.
-
----
-
-## About the Author
-
-**Kavish Paraswar**  
-*AI Engineer & Full-Stack Developer*
-
-Specializing in the intersection of deep learning research and production-grade software engineering. Passionate about building high-performance AI systems, intelligent disaster response platforms, and scalable full-stack architectures.
-
-[GitHub](https://github.com/Kavish-Paraswar)
