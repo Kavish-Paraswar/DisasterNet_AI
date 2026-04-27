@@ -1,0 +1,642 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Satellite Analysis - Disaster Intelligence</title>
+    <!-- Google Fonts for Modern Typography -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <!-- Font Awesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <style>
+        /* Satellite specific localized overrides for the dropzones */
+        .upload-split {
+            display: flex;
+            gap: 1rem;
+            width: 100%;
+        }
+        .upload-split > div {
+            flex: 1;
+        }
+        .task-selector {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: center;
+        }
+        .task-radio {
+            display: none;
+        }
+        .task-label {
+            padding: 0.75rem 1.5rem;
+            border: 1px solid var(--glass-border);
+            border-radius: 8px;
+            cursor: pointer;
+            color: var(--text-muted);
+            transition: all 0.3s ease;
+            font-weight: 500;
+        }
+        .task-radio:checked + .task-label {
+            background: rgba(255, 87, 34, 0.15);
+            border-color: var(--accent-orange);
+            color: var(--accent-orange);
+        }
+        .hidden-sat {
+            display: none !important;
+        }
+        .sat-row-card {
+            background: rgba(20,20,30,0.4);
+            border-radius: 12px;
+            padding: 1rem;
+            text-align: center;
+            border: 1px solid rgba(255,255,255,0.05);
+        }
+        .sat-img {
+            width: 100%;
+            border-radius: 8px;
+            max-height: 250px;
+            object-fit: cover;
+            margin-top: 0.5rem;
+        }
+        .big-map {
+            max-height: 400px;
+            margin-top: 1rem;
+        }
+        .sat-badge {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: white;
+            background: linear-gradient(135deg, rgba(255,87,34,0.8) 0%, rgba(200,50,0,0.8) 100%);
+            padding: 0.5rem 1rem;
+            border-radius: 12px;
+            display: inline-flex;
+            gap: 0.5rem;
+            box-shadow: 0 4px 15px rgba(255,87,34,0.3);
+            margin-bottom: 1.5rem;
+        }
+
+        /* Dashboard Styles */
+        :root {
+            --danger-orange: #f97316;
+            --danger-red: #ef4444;
+            --safe-green: #22c55e;
+            --amber: #f59e0b;
+            --critical-red: #dc2626;
+            --flood-water: #0ea5e9;
+        }
+
+        .dashboard-section {
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease-out;
+            text-align: left;
+        }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1.25rem;
+            margin-bottom: 1.5rem;
+        }
+
+        .dashboard-grid.triple {
+            grid-template-columns: repeat(3, 1fr);
+        }
+
+        @media (max-width: 768px) {
+            .dashboard-grid,
+            .dashboard-grid.triple {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .metric-card {
+            background: linear-gradient(135deg, rgba(15, 23, 42, 0.9), rgba(30, 41, 59, 0.95));
+            border: 1px solid rgba(255,255,255,0.1);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .metric-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.3);
+        }
+
+        .metric-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: var(--card-accent, var(--primary-color));
+        }
+
+        .metric-card .metric-icon {
+            font-size: 1.5rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .metric-card .metric-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: rgba(255,255,255,0.6);
+            margin-bottom: 0.35rem;
+        }
+
+        .metric-card .metric-value {
+            font-size: 1.75rem;
+            font-weight: 700;
+            line-height: 1.2;
+            color: white;
+        }
+
+        .metric-card .metric-sub {
+            font-size: 0.8rem;
+            color: rgba(255,255,255,0.6);
+            margin-top: 0.25rem;
+        }
+
+        .severity-badge {
+            display: inline-block;
+            padding: 0.35rem 1rem;
+            border-radius: 2rem;
+            font-weight: 600;
+            font-size: 0.85rem;
+            letter-spacing: 0.03em;
+            text-transform: uppercase;
+        }
+
+        .severity-badge.low { background: rgba(34, 197, 94, 0.15); color: #4ade80; border: 1px solid rgba(34, 197, 94, 0.3); }
+        .severity-badge.moderate { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .severity-badge.high { background: rgba(249, 115, 22, 0.15); color: #fb923c; border: 1px solid rgba(249, 115, 22, 0.3); }
+        .severity-badge.severe { background: rgba(239, 68, 68, 0.15); color: #f87171; border: 1px solid rgba(239, 68, 68, 0.3); }
+        .severity-badge.extreme { background: rgba(220, 38, 38, 0.2); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.4); }
+        .severity-badge.medium { background: rgba(245, 158, 11, 0.15); color: #fbbf24; border: 1px solid rgba(245, 158, 11, 0.3); }
+        .severity-badge.critical {
+            background: rgba(220, 38, 38, 0.2); color: #fca5a5; border: 1px solid rgba(220, 38, 38, 0.4);
+            animation: pulse-critical 2s ease-in-out infinite;
+        }
+
+        @keyframes pulse-critical {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.3); }
+            50% { box-shadow: 0 0 15px 3px rgba(220, 38, 38, 0.2); }
+        }
+
+        .progress-track {
+            width: 100%;
+            height: 8px;
+            background: rgba(255,255,255, 0.1);
+            border-radius: 4px;
+            margin-top: 0.75rem;
+            overflow: hidden;
+        }
+
+        .progress-fill {
+            height: 100%;
+            border-radius: 4px;
+            transition: width 1s ease-out;
+            width: 0;
+        }
+
+        .progress-fill.danger { background: linear-gradient(90deg, var(--danger-orange), var(--danger-red)); }
+        .progress-fill.safe { background: linear-gradient(90deg, #059669, var(--safe-green)); }
+        .progress-fill.info { background: linear-gradient(90deg, #0284c7, #38bdf8); }
+        .progress-fill.warning { background: linear-gradient(90deg, #d97706, #fbbf24); }
+
+        .action-banner {
+            background: linear-gradient(135deg, rgba(220, 38, 38, 0.1), rgba(249, 115, 22, 0.08));
+            border: 1px solid rgba(239, 68, 68, 0.25);
+            border-radius: 0.75rem;
+            padding: 1.5rem 2rem;
+            text-align: center;
+            margin-top: 1.25rem;
+        }
+
+        .action-banner .action-icon { font-size: 2.5rem; margin-bottom: 0.5rem; }
+        .action-banner .action-label { font-size: 0.75rem; text-transform: uppercase; letter-spacing: 0.08em; color: rgba(255,255,255,0.6); margin-bottom: 0.35rem; }
+        .action-banner .action-text { font-size: 1.5rem; font-weight: 700; color: #fca5a5; }
+
+        .dashboard-divider { border: none; border-top: 1px solid rgba(255,255,255,0.1); margin: 2rem 0; }
+
+        .card-accent-safe { --card-accent: var(--safe-green); }
+        .card-accent-danger { --card-accent: var(--danger-red); }
+        .card-accent-orange { --card-accent: var(--danger-orange); }
+        .card-accent-blue { --card-accent: var(--flood-water); }
+        .card-accent-amber { --card-accent: var(--amber); }
+    </style>
+</head>
+<body>
+
+    <!-- Background Layer -->
+    <div class="background-layer">
+        <div class="overlay-gradient"></div>
+    </div>
+
+    <!-- Main Application Container -->
+    <div class="app-container">
+
+        <!-- Navbar -->
+        <nav class="navbar">
+            <div class="nav-spacer"></div>
+            <div class="logo">
+                <i class="fa-solid fa-satellite-dish"></i> Disaster Intelligence
+            </div>
+            <div class="mode-switcher-wrapper">
+                <div class="mode-switcher">
+                    <a href="/" class="mode-btn" id="mode-disaster">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Disaster Mode
+                    </a>
+                    <a href="/satellite" class="mode-btn active" id="mode-satellite">
+                        <i class="fa-solid fa-satellite"></i> Satellite Analysis
+                    </a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Top Section -->
+        <section class="top-section">
+            <h2 style="font-size: 2rem; margin-bottom: 0.5rem; font-weight: 700;">Satellite Damage Analysis</h2>
+            <p class="hero-subtitle">Select a task and upload imagery for AI-powered assessment.</p>
+            
+            <div class="glass-card input-card">
+                
+                <div class="task-selector">
+                    <input type="radio" name="task" id="task-flood" value="flood" class="task-radio" checked>
+                    <label for="task-flood" class="task-label"><i class="fa-solid fa-water"></i> Flood Detection</label>
+
+                    <input type="radio" name="task" id="task-building" value="building" class="task-radio">
+                    <label for="task-building" class="task-label"><i class="fa-solid fa-building"></i> Building Damage</label>
+                </div>
+
+                <!-- Flood UI -->
+                <div id="ui-flood">
+                    <div class="drop-zone" id="dz-flood-post" onclick="document.getElementById('fi-flood-post').click()">
+                        <i class="fa-solid fa-layer-group"></i>
+                        <span class="drop-text">Upload <span class="highlight">Post-Disaster</span> Image</span>
+                        <input type="file" id="fi-flood-post" accept="image/*" hidden>
+                    </div>
+                    <div class="preview-container hidden-sat" id="pc-flood-post">
+                        <img id="pi-flood-post" alt="Preview">
+                        <button class="clear-btn" onclick="clearFile('flood', 'post')"><i class="fa-solid fa-xmark"></i></button>
+                    </div>
+                </div>
+
+                <!-- Building UI -->
+                <div id="ui-building" class="hidden-sat">
+                    <div class="upload-split">
+                        <div>
+                            <div class="drop-zone" id="dz-build-pre" onclick="document.getElementById('fi-build-pre').click()">
+                                <i class="fa-solid fa-camera"></i>
+                                <span class="drop-text"><span class="highlight">Pre-Disaster</span></span>
+                                <input type="file" id="fi-build-pre" accept="image/*" hidden>
+                            </div>
+                            <div class="preview-container hidden-sat" id="pc-build-pre">
+                                <img id="pi-build-pre" alt="Preview">
+                                <button class="clear-btn" onclick="clearFile('build', 'pre')"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                        <div>
+                            <div class="drop-zone" id="dz-build-post" onclick="document.getElementById('fi-build-post').click()">
+                                <i class="fa-solid fa-camera"></i>
+                                <span class="drop-text"><span class="highlight">Post-Disaster</span></span>
+                                <input type="file" id="fi-build-post" accept="image/*" hidden>
+                            </div>
+                            <div class="preview-container hidden-sat" id="pc-build-post">
+                                <img id="pi-build-post" alt="Preview">
+                                <button class="clear-btn" onclick="clearFile('build', 'post')"><i class="fa-solid fa-xmark"></i></button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="action-btn primary-btn" id="analyze-btn" disabled>
+                    <span>Analyze Satellite Data</span>
+                    <i class="fa-solid fa-robot"></i>
+                </button>
+            </div>
+            
+            <div class="loading-state hidden-sat" id="loading-spinner" style="margin-top: 2rem;">
+                <div class="spinner"></div>
+                <p>Processing High-Res Satellite Imagery...</p>
+            </div>
+            
+        </section>
+
+        <!-- Results Section -->
+        <section class="results-section hidden-sat" id="results-section">
+            <div class="glass-card" style="max-width: 1100px; margin: 0 auto;">
+                
+                <!-- Flood Results -->
+                <div id="res-flood" class="hidden-sat" style="text-align: center;">
+                    <div class="sat-badge">
+                        <i class="fa-solid fa-water"></i> <span id="r-flood-pct">--</span>% Flood Coverage
+                    </div>
+                    <div class="sat-row-card">
+                        <h3 class="seg-section-title"><i class="fa-solid fa-layer-group"></i> Flood Mask</h3>
+                        <img id="r-flood-mask" class="sat-img big-map" src="" alt="Flood Map">
+                    </div>
+
+                    <div class="dashboard-section" id="floodDashboard" style="display:none">
+                        <hr class="dashboard-divider">
+                        <h3 class="seg-section-title" style="text-align: center; margin-bottom: 2rem;">📊 Flood Intelligence Dashboard</h3>
+
+                        <h4 style="color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;">Flood Overview</h4>
+                        <div class="dashboard-grid triple">
+                            <div class="metric-card card-accent-danger">
+                                <div class="metric-icon">🌊</div>
+                                <div class="metric-label">Flood Coverage</div>
+                                <div class="metric-value" id="di-flood-coverage">—</div>
+                                <div class="progress-track"><div class="progress-fill danger" id="di-flood-bar"></div></div>
+                            </div>
+                            <div class="metric-card card-accent-safe">
+                                <div class="metric-icon">🛡️</div>
+                                <div class="metric-label">Safe Zone</div>
+                                <div class="metric-value" id="di-safe-zone" style="color:var(--safe-green)">—</div>
+                                <div class="progress-track"><div class="progress-fill safe" id="di-safe-bar"></div></div>
+                            </div>
+                            <div class="metric-card card-accent-orange">
+                                <div class="metric-icon">⚠️</div>
+                                <div class="metric-label">Severity Level</div>
+                                <div class="metric-value" id="di-severity-value" style="font-size:1.1rem;margin-top:0.5rem;">—</div>
+                            </div>
+                        </div>
+
+                        <h4 style="color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Flood Shape Analysis</h4>
+                        <div class="dashboard-grid triple">
+                            <div class="metric-card card-accent-blue">
+                                <div class="metric-icon">📡</div>
+                                <div class="metric-label">Water Spread Density</div>
+                                <div class="metric-value" id="di-spread" style="font-size:1.1rem;margin-top:0.3rem;">—</div>
+                            </div>
+                            <div class="metric-card card-accent-blue">
+                                <div class="metric-icon">🔍</div>
+                                <div class="metric-label">Largest Flood Cluster</div>
+                                <div class="metric-value" id="di-cluster-pixels">—</div>
+                                <div class="metric-sub" id="di-cluster-ratio">—</div>
+                            </div>
+                            <div class="metric-card card-accent-amber">
+                                <div class="metric-icon">🧩</div>
+                                <div class="metric-label">Fragmentation Index</div>
+                                <div class="metric-value" id="di-frag-score">—</div>
+                                <div class="progress-track"><div class="progress-fill warning" id="di-frag-bar"></div></div>
+                            </div>
+                        </div>
+
+                        <h4 style="color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Risk Interpretation</h4>
+                        <div class="dashboard-grid triple">
+                            <div class="metric-card card-accent-orange">
+                                <div class="metric-icon">🚑</div>
+                                <div class="metric-label">Evacuation Difficulty</div>
+                                <div class="metric-value" id="di-evac-score">—</div>
+                                <div class="metric-sub" id="di-evac-label"></div>
+                                <div class="progress-track"><div class="progress-fill danger" id="di-evac-bar"></div></div>
+                            </div>
+                            <div class="metric-card card-accent-danger">
+                                <div class="metric-icon">🚨</div>
+                                <div class="metric-label">Disaster Urgency Score</div>
+                                <div class="metric-value" id="di-urgency-score">—</div>
+                                <div class="progress-track"><div class="progress-fill danger" id="di-urgency-bar"></div></div>
+                            </div>
+                            <div class="metric-card card-accent-danger">
+                                <div class="metric-icon">🔴</div>
+                                <div class="metric-label">Urgency Level</div>
+                                <div class="metric-value" id="di-urgency-level" style="font-size:1.1rem;margin-top:0.5rem;">—</div>
+                            </div>
+                        </div>
+
+                        <h4 style="color:rgba(255,255,255,0.6);text-transform:uppercase;letter-spacing:0.06em;font-size:0.8rem;margin-bottom:1rem;margin-top:2rem;">Emergency Recommendation</h4>
+                        <div class="action-banner" id="di-action-banner">
+                            <div class="action-icon">🆘</div>
+                            <div class="action-label">Recommended Action</div>
+                            <div class="action-text" id="di-action-text">—</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Building Results -->
+                <div id="res-building" class="hidden-sat" style="text-align: center;">
+                    <div class="sat-badge" style="background: linear-gradient(135deg, #e74c3c, #c0392b);">
+                        <i class="fa-solid fa-house-crack"></i> <span id="r-build-pct">--</span>% Structural Damage
+                    </div>
+                    
+                    <div class="upload-split">
+                        <div class="sat-row-card">
+                            <h3 class="seg-section-title">Mask Pre</h3>
+                            <img id="r-build-m1" class="sat-img" src="" alt="">
+                        </div>
+                        <div class="sat-row-card">
+                            <h3 class="seg-section-title">Mask Post</h3>
+                            <img id="r-build-m2" class="sat-img" src="" alt="">
+                        </div>
+                    </div>
+                    
+                    <div class="sat-row-card" style="margin-top:1rem;">
+                        <h3 class="seg-section-title"><i class="fa-solid fa-map-location-dot"></i> Damage Analysis Map</h3>
+                        <p style="color:var(--text-muted); font-size:0.8rem; margin-bottom: 0.5rem;">
+                            🟩 Intact &nbsp;|&nbsp; 🟨 New Construction &nbsp;|&nbsp; 🟥 Destroyed
+                        </p>
+                        <img id="r-build-map" class="sat-img big-map" src="" alt="">
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+    </div>
+
+    <!-- Minimal JS to handle the file API logic for the new route -->
+    <script>
+        const tasks = document.querySelectorAll('.task-radio');
+        const uiFlood = document.getElementById('ui-flood');
+        const uiBuilding = document.getElementById('ui-building');
+        const analyzeBtn = document.getElementById('analyze-btn');
+
+        // State
+        let currentTask = 'flood';
+        const files = {
+            flood: { post: null },
+            build: { pre: null, post: null }
+        };
+
+        tasks.forEach(t => {
+            t.addEventListener('change', (e) => {
+                currentTask = e.target.value;
+                if(currentTask === 'flood'){
+                    uiFlood.classList.remove('hidden-sat');
+                    uiBuilding.classList.add('hidden-sat');
+                } else {
+                    uiFlood.classList.add('hidden-sat');
+                    uiBuilding.classList.remove('hidden-sat');
+                }
+                checkBtn();
+            });
+        });
+
+        function handleUpload(type, elementID, readerElement, dzElement, pcElement) {
+            const fi = document.getElementById(elementID);
+            fi.addEventListener('change', (e)=>{
+                if(e.target.files.length > 0){
+                    const f = e.target.files[0];
+                    if(type==='flood-post') files.flood.post = f;
+                    if(type==='build-pre') files.build.pre = f;
+                    if(type==='build-post') files.build.post = f;
+
+                    const r = new FileReader();
+                    r.onload = ev => {
+                        document.getElementById(readerElement).src = ev.target.result;
+                        document.getElementById(dzElement).classList.add('hidden-sat');
+                        document.getElementById(pcElement).classList.remove('hidden-sat');
+                        checkBtn();
+                    };
+                    r.readAsDataURL(f);
+                }
+            });
+        }
+
+        handleUpload('flood-post', 'fi-flood-post', 'pi-flood-post', 'dz-flood-post', 'pc-flood-post');
+        handleUpload('build-pre', 'fi-build-pre', 'pi-build-pre', 'dz-build-pre', 'pc-build-pre');
+        handleUpload('build-post', 'fi-build-post', 'pi-build-post', 'dz-build-post', 'pc-build-post');
+
+        window.clearFile = function(task, type) {
+            files[task][type] = null;
+            let fi, pi, dz, pc;
+            if(task === 'flood' && type === 'post') { fi='fi-flood-post'; pi='pi-flood-post'; dz='dz-flood-post'; pc='pc-flood-post'; }
+            if(task === 'build' && type === 'pre')  { fi='fi-build-pre'; pi='pi-build-pre'; dz='dz-build-pre'; pc='pc-build-pre'; }
+            if(task === 'build' && type === 'post') { fi='fi-build-post'; pi='pi-build-post'; dz='dz-build-post'; pc='pc-build-post'; }
+            
+            document.getElementById(fi).value = '';
+            document.getElementById(pi).src = '';
+            document.getElementById(pc).classList.add('hidden-sat');
+            document.getElementById(dz).classList.remove('hidden-sat');
+            checkBtn();
+        };
+
+        function checkBtn() {
+            if(currentTask === 'flood') {
+                analyzeBtn.disabled = !files.flood.post;
+            } else {
+                analyzeBtn.disabled = !(files.build.pre && files.build.post);
+            }
+        }
+
+        analyzeBtn.addEventListener('click', async () => {
+            const formData = new FormData();
+            let endpoint = '';
+            if(currentTask === 'flood') {
+                formData.append('post_image', files.flood.post);
+                endpoint = '/satellite/flood';
+            } else {
+                formData.append('pre_image', files.build.pre);
+                formData.append('post_image', files.build.post);
+                endpoint = '/satellite/building';
+            }
+
+            analyzeBtn.disabled = true;
+            document.getElementById('loading-spinner').classList.remove('hidden-sat');
+            document.getElementById('results-section').classList.add('hidden-sat');
+
+            try {
+                const res = await fetch(endpoint, { method: 'POST', body: formData });
+                const data = await res.json();
+
+                if(!res.ok || data.error) throw new Error(data.error || 'Pipeline failure');
+
+                if(currentTask === 'flood') {
+                    document.getElementById('res-flood').classList.remove('hidden-sat');
+                    document.getElementById('res-building').classList.add('hidden-sat');
+
+                    document.getElementById('r-flood-pct').textContent = data.flood_percent;
+                    document.getElementById('r-flood-mask').src = data.flood_mask_url + "?t=" + Date.now();
+                    
+                    if (data.severity_level) {
+                        var dashboard = document.getElementById('floodDashboard');
+                        dashboard.style.display = 'block';
+
+                        document.getElementById('di-flood-coverage').innerText = data.flood_coverage + '%';
+                        document.getElementById('di-safe-zone').innerText = data.safe_zone + '%';
+
+                        var severityEl = document.getElementById('di-severity-value');
+                        var sevClass = data.severity_level.toLowerCase();
+                        severityEl.innerHTML = '<span class="severity-badge ' + sevClass + '">' + data.severity_level + ' Flood Zone</span>';
+
+                        document.getElementById('di-spread').innerHTML = '<span class="severity-badge info" style="background:rgba(14,165,233,0.12);color:#38bdf8;border:1px solid rgba(14,165,233,0.3);">' + data.water_spread_density + '</span>';
+
+                        var clusterPixels = data.largest_cluster_pixels;
+                        var formatted = clusterPixels >= 1000 ? (clusterPixels / 1000).toFixed(1) + 'K' : clusterPixels;
+                        document.getElementById('di-cluster-pixels').innerText = formatted + ' px';
+                        document.getElementById('di-cluster-ratio').innerText = (data.largest_cluster_ratio * 100).toFixed(0) + '% of total flood area';
+
+                        document.getElementById('di-frag-score').innerText = data.fragmentation_index.toFixed(2);
+
+                        document.getElementById('di-evac-score').innerText = data.evacuation_difficulty_score + ' / 10';
+                        var evacLabel = '';
+                        if (data.evacuation_difficulty_score <= 3) evacLabel = 'Easy';
+                        else if (data.evacuation_difficulty_score <= 6) evacLabel = 'Moderate';
+                        else if (data.evacuation_difficulty_score <= 8) evacLabel = 'Difficult';
+                        else evacLabel = 'Severe';
+                        document.getElementById('di-evac-label').innerText = evacLabel;
+
+                        document.getElementById('di-urgency-score').innerText = data.disaster_urgency_score + ' / 10';
+
+                        var urgencyEl = document.getElementById('di-urgency-level');
+                        var urgClass = data.urgency_level.toLowerCase();
+                        urgencyEl.innerHTML = '<span class="severity-badge ' + urgClass + '">' + data.urgency_level + '</span>';
+
+                        document.getElementById('di-action-text').innerText = data.recommended_action;
+
+                        var actionBanner = document.getElementById('di-action-banner');
+                        if (urgClass === 'critical') {
+                            actionBanner.style.borderColor = 'rgba(220,38,38,0.5)';
+                            actionBanner.style.background = 'linear-gradient(135deg, rgba(220,38,38,0.15), rgba(249,115,22,0.1))';
+                            document.getElementById('di-action-text').style.color = '#fca5a5';
+                        } else if (urgClass === 'high') {
+                            actionBanner.style.borderColor = 'rgba(249,115,22,0.4)';
+                            actionBanner.style.background = 'linear-gradient(135deg, rgba(249,115,22,0.1), rgba(245,158,11,0.08))';
+                            document.getElementById('di-action-text').style.color = '#fb923c';
+                        } else if (urgClass === 'medium') {
+                            actionBanner.style.borderColor = 'rgba(245,158,11,0.3)';
+                            actionBanner.style.background = 'linear-gradient(135deg, rgba(245,158,11,0.08), rgba(234,179,8,0.06))';
+                            document.getElementById('di-action-text').style.color = '#fbbf24';
+                        } else {
+                            actionBanner.style.borderColor = 'rgba(34,197,94,0.3)';
+                            actionBanner.style.background = 'linear-gradient(135deg, rgba(34,197,94,0.08), rgba(5,150,105,0.06))';
+                            document.getElementById('di-action-text').style.color = '#4ade80';
+                        }
+
+                        setTimeout(function() {
+                            document.getElementById('di-flood-bar').style.width = data.flood_coverage + '%';
+                            document.getElementById('di-safe-bar').style.width = data.safe_zone + '%';
+                            document.getElementById('di-frag-bar').style.width = (data.fragmentation_index * 100) + '%';
+                            document.getElementById('di-evac-bar').style.width = (data.evacuation_difficulty_score * 10) + '%';
+                            document.getElementById('di-urgency-bar').style.width = (data.disaster_urgency_score * 10) + '%';
+                        }, 100);
+                    }
+                } else {
+                    document.getElementById('res-flood').classList.add('hidden-sat');
+                    document.getElementById('res-building').classList.remove('hidden-sat');
+
+                    document.getElementById('r-build-pct').textContent = data.building_damage_percent;
+                    document.getElementById('r-build-m1').src = data.b_mask_pre_url + "?t=" + Date.now();
+                    document.getElementById('r-build-m2').src = data.b_mask_post_url + "?t=" + Date.now();
+                    document.getElementById('r-build-map').src = data.b_damage_map_url + "?t=" + Date.now();
+                }
+
+                document.getElementById('results-section').classList.remove('hidden-sat');
+                document.getElementById('results-section').scrollIntoView({ behavior: 'smooth' });
+
+            } catch (err) {
+                alert("Error: " + err.message);
+            } finally {
+                document.getElementById('loading-spinner').classList.add('hidden-sat');
+                checkBtn();
+            }
+        });
+
+    </script>
+</body>
+</html>
